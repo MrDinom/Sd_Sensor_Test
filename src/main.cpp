@@ -78,7 +78,7 @@ bool RemoteControlCodeEnabled = true;
 // Allows for easier use of the VEX Library
 
 // A global instance of competition
-int Screen_precision = 0, Console_precision = 0, Controller1_precision = 0;
+int Screen_precision = 0, Console_precision = 0, Controller1_precision = 0, Controller2_precision = 0, C2screen = 0;
 
 const char* printToController1_numberFormat() {
   // look at the current precision setting to find the format string
@@ -90,6 +90,20 @@ const char* printToController1_numberFormat() {
     default: return "%f"; // use the print system default for everthing else
   }
 }
+
+
+const char* printToController2_numberFormat() {
+  // look at the current precision setting to find the format string
+  switch(Controller2_precision){
+    case 0:  return "%.0f"; // 0 decimal places (1)
+    case 1:  return "%.1f"; // 1 decimal place  (0.1)
+    case 2:  return "%.2f"; // 2 decimal places (0.01)
+    case 3:  return "%.3f"; // 3 decimal places (0.001)
+    default: return "%f"; // use the print system default for everthing else
+  }
+}
+
+
 
 competition Competition;
 float LiftVariR, LiftVariL, SpeedChange, TurnChange, Twait;
@@ -134,7 +148,7 @@ void clawC() {
 }
 
 void VD() {
-  if (Twait == 1) {
+  if (Twait == 1 && C2screen == 0) {
     Twait = 0;
   SpeedChange = SpeedChange + -0.10;
       wait(50, msec);
@@ -143,7 +157,7 @@ void VD() {
 }
 
 void VU() {
-  if (Twait == 1) {
+  if (Twait == 1 && C2screen == 0) {
     Twait = 0;
   SpeedChange = SpeedChange + 0.10;
       wait(50, msec);
@@ -152,7 +166,7 @@ void VU() {
 }
 
 void TD() {
-  if (Twait == 1) {
+  if (Twait == 1 && C2screen == 0) {
     Twait = 0;
     TurnChange = TurnChange + -0.10;
     wait(50, msec);
@@ -161,7 +175,7 @@ void TD() {
 }
 
 void TU() {
-  if (Twait == 1) {
+  if (Twait == 1 && C2screen == 0) {
     Twait = 0;
     TurnChange = TurnChange + 0.10;
     wait(50, msec);
@@ -191,12 +205,31 @@ void pre_auton(void) {
   TurnChange = 1;
   Controller1_precision = 2;
   Twait = 1;
-  while (1) {
+  C2screen = 0;
+  while (C2screen == 0) {
     Controller2.Screen.setCursor(1, 1);
     Controller2.Screen.print(printToController1_numberFormat(), static_cast<float>(SpeedChange));
     Controller2.Screen.setCursor(2, 1);
     Controller2.Screen.print(printToController1_numberFormat(), static_cast<float>(TurnChange));
     Controller2.Screen.clearScreen();
+    
+  }
+
+  while (C2screen == 1) {
+    Controller2_precision = 2;
+    Controller2.Screen.setCursor(1, 1);
+    Controller2.Screen.print(printToController2_numberFormat(), static_cast<float>(FR1.temperature(percent)));
+    Controller2.Screen.print(" FR");
+    Controller2.Screen.setCursor(2, 1);
+    Controller2.Screen.print(printToController2_numberFormat(), static_cast<float>(FL10.temperature(percent)));
+    Controller2.Screen.print(" FL");
+    Controller2.Screen.setCursor(3, 1);
+    Controller2.Screen.print(printToController2_numberFormat(), static_cast<float>(BR19.temperature(percent)));
+    Controller2.Screen.print(" BR");
+    Controller2.Screen.setCursor(4, 1);
+    Controller2.Screen.print(printToController2_numberFormat(), static_cast<float>(BL16.temperature(percent)));
+    Controller2.Screen.print(" BL");
+  wait(0.3, seconds);
     
   }
 }
@@ -282,22 +315,18 @@ void usercontrol(void) {
   FR1.spin(forward);
   BL16.spin(reverse);
   BR19.spin(forward);
-  Controller1.ButtonL2.pressed(LiftD);
-  Controller1.ButtonL1.pressed(Liftup);
-  Controller1.ButtonR2.pressed(clawC);
-  Controller1.ButtonR1.pressed(clawO);
-  Controller2.ButtonDown.pressed(VD);
-  Controller2.ButtonUp.pressed(VU);
-  Controller2.ButtonLeft.pressed(TD);
-  Controller2.ButtonRight.pressed(TU);
 
   wait(5, msec);               // prevent wasted resources.
   }
 }
 
+void nextscreen() {
+  C2screen = C2screen + 1;
+}
 
-
-
+void lastscreen() {
+  C2screen = C2screen - 1;
+}
 
 // Main will set up the competition functions and callbacks.
 //
@@ -310,6 +339,23 @@ int main() {
   // Prevent main from exiting with an infinite loop.
   while (true) {
     wait(100, msec);
+  Controller1.ButtonL2.pressed(LiftD);
+  Controller1.ButtonL1.pressed(Liftup);
+  Controller1.ButtonR2.pressed(clawC);
+  Controller1.ButtonR1.pressed(clawO);
+  Controller2.ButtonDown.pressed(VD);
+  Controller2.ButtonUp.pressed(VU);
+  Controller2.ButtonLeft.pressed(TD);
+  Controller2.ButtonRight.pressed(TU);
+  Controller2.ButtonA.pressed(nextscreen);
+  Controller2.ButtonY.pressed(lastscreen);
+  if (C2screen < 1) {
+    C2screen = 0;
+  }
+
+  if (C2screen > 0) {
+    C2screen = 1;
+  }
 
   }
 }
