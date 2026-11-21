@@ -92,15 +92,16 @@ const char* printToController1_numberFormat() {
 }
 
 competition Competition;
-float LiftVariR, LiftVariL, SpeedChange;
+float LiftVariR, LiftVariL, SpeedChange, TurnChange, Twait;
 // define your global instances of motors and other devices here
 controller Controller1 = controller(primary);
+controller Controller2 = controller(partner);
 motor FL10 = motor(PORT10, ratio6_1, true);
-motor BL16 = motor(PORT11, ratio6_1, true);
-motor FR1 = motor(PORT20, ratio6_1, false);
+motor BL16 = motor(PORT16, ratio6_1, true);
+motor FR1 = motor(PORT1, ratio6_1, false);
 motor BR19 = motor(PORT19, ratio6_1, false);
-motor Llift = motor(PORT2, ratio36_1, false);
-motor Rlift = motor(PORT1, ratio36_1, false); //reverse later
+motor Llift = motor(PORT15, ratio36_1, false);
+motor Rlift = motor(PORT16, ratio36_1, false); //reverse later
 motor_group Lift = motor_group(Rlift, Llift);
 motor claw = motor(PORT2, ratio36_1, true);
 motor_group RD = motor_group(FR1, BR19);
@@ -133,13 +134,40 @@ void clawC() {
 }
 
 void VD() {
-  SpeedChange = SpeedChange + -0.01;
+  if (Twait == 1) {
+    Twait = 0;
+  SpeedChange = SpeedChange + -0.10;
+      wait(50, msec);
+    Twait = 1;
+  }
 }
 
 void VU() {
-  SpeedChange = SpeedChange + 0.01;
+  if (Twait == 1) {
+    Twait = 0;
+  SpeedChange = SpeedChange + 0.10;
+      wait(50, msec);
+    Twait = 1;
+  }
 }
 
+void TD() {
+  if (Twait == 1) {
+    Twait = 0;
+    TurnChange = TurnChange + -0.10;
+    wait(50, msec);
+    Twait = 1;
+  }
+}
+
+void TU() {
+  if (Twait == 1) {
+    Twait = 0;
+    TurnChange = TurnChange + 0.10;
+    wait(50, msec);
+    Twait = 1;
+  }
+}
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
 /*                                                                           */
@@ -160,13 +188,15 @@ void pre_auton(void) {
   Lift.stop(hold);
   claw.stop();
   SpeedChange = 1;
+  TurnChange = 1;
   Controller1_precision = 2;
+  Twait = 1;
   while (1) {
-    Controller1.Screen.setCursor(1, 1);
-    Controller1.Screen.print(printToController1_numberFormat(), static_cast<float>(SpeedChange));
-    Controller1.Screen.setCursor(2, 1);
-    Controller1.Screen.print(printToController1_numberFormat(), static_cast<float>(SpeedChange));
-    Controller1.Screen.clearScreen();
+    Controller2.Screen.setCursor(1, 1);
+    Controller2.Screen.print(printToController1_numberFormat(), static_cast<float>(SpeedChange));
+    Controller2.Screen.setCursor(2, 1);
+    Controller2.Screen.print(printToController1_numberFormat(), static_cast<float>(TurnChange));
+    Controller2.Screen.clearScreen();
     
   }
 }
@@ -237,27 +267,29 @@ void autonomous(void) {
 /*                                                                           */
 /*  This task is used to control your robot during the user control phase of */
 /*  a VEX Competition.                                                       */
-/*                                                                           */
+/*        m                                                                  */
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
 void usercontrol(void) {
   // User control code here, inside the loop
   while (1) {
-  FL10.setVelocity(((Controller1.Axis3.position() + Controller1.Axis1.position()) * SpeedChange), percent);
-  BL16.setVelocity(((Controller1.Axis3.position() + Controller1.Axis1.position()) * SpeedChange), percent);
-  FR1.setVelocity(((Controller1.Axis3.position() - Controller1.Axis1.position()) * SpeedChange), percent);
-  BR19.setVelocity(((Controller1.Axis3.position() - Controller1.Axis1.position()) * SpeedChange), percent);
+  FL10.setVelocity((((Controller1.Axis3.position( )* SpeedChange) + (Controller1.Axis1.position() * TurnChange)) ), percent);
+  BL16.setVelocity((((Controller1.Axis3.position() * SpeedChange) + (Controller1.Axis1.position() * TurnChange)) ), percent);
+  FR1.setVelocity((((Controller1.Axis3.position() * SpeedChange) - (Controller1.Axis1.position() * TurnChange)) ), percent);
+  BR19.setVelocity((((Controller1.Axis3.position() * SpeedChange) - (Controller1.Axis1.position() * TurnChange)) ), percent);
   FL10.spin(forward);
-  BL16.spin(forward);
   FR1.spin(forward);
+  BL16.spin(reverse);
   BR19.spin(forward);
   Controller1.ButtonL2.pressed(LiftD);
   Controller1.ButtonL1.pressed(Liftup);
   Controller1.ButtonR2.pressed(clawC);
   Controller1.ButtonR1.pressed(clawO);
-  Controller1.ButtonDown.pressed(VD);
-  Controller1.ButtonUp.pressed(VU);
+  Controller2.ButtonDown.pressed(VD);
+  Controller2.ButtonUp.pressed(VU);
+  Controller2.ButtonLeft.pressed(TD);
+  Controller2.ButtonRight.pressed(TU);
 
   wait(5, msec);               // prevent wasted resources.
   }
